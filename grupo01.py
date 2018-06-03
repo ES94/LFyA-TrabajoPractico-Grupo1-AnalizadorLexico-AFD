@@ -13,6 +13,8 @@
 
 from ply import cpp, ctokens, lex, yacc, ygen
 
+reglas = []
+
 class ResultadoGramatica:
     '''Representa el resultado del análisis de una gramática, junto con las 
     reglas que la definen y los firsts, follows, y selects de cada una de 
@@ -85,11 +87,12 @@ class Regla:
 
     '''
 
-    def __init__(self, regla, firsts, follows, selects):
+    firsts = []
+    follows =[]
+    selects = []
+
+    def __init__(self, regla):
         self.regla = regla
-        self.firsts = firsts
-        self.follows = follows
-        self.selects = selects
 
 def setear_gramatica(cadena):
     '''Recibe una gramática, pasada como parámetro, y devuelve los firsts, 
@@ -97,12 +100,7 @@ def setear_gramatica(cadena):
 
     '''
     
-    r1 = Regla('', ['', ''], ['', ''], ['', ''])
-    r2 = Regla('', ['', ''], ['', ''], ['', ''])
-    r3 = Regla('', ['', ''], ['', ''], ['', ''])
-    reglas = [r1, r2, r3]
     resultado = ResultadoGramatica(reglas, True)
-    
     # {...}
 
     return resultado
@@ -132,7 +130,7 @@ def evaluar_cadena(cadena):
         s = pila.pop()              # Extrae el primer elemento de la pila.
         
         if s in NT:                 # Si el elemento es un no terminal:
-            l = tabla[(s, look)]    # Se copia el resto de la cadena en lista.
+            l = tabla[(s, look)]    # Se copia el resto de la entrada en lista.
             l = l[::-1]             # Se invierte la lista con la copia.
             pila.extend(l)          # Se añade la lista invertida a la pila.
         elif s == look:             # Si es un no terminal y es igual al look:
@@ -144,3 +142,82 @@ def evaluar_cadena(cadena):
         print('True')               # Imprime 'True'. La cadena es válida.
     else:                           # Sino:
         print('False')              # Imprime 'False'. La cadena no es válida.
+
+def cargar_reglas():
+    '''Carga las reglas que el usuario define.
+
+    '''
+
+    r = Regla(input('\nIngrese una regla: '))
+    reglas.append(r)
+    opcion = input('¿Desea ingresar otra regla? (s/n): ')
+
+    while opcion == 's':
+        r = Regla(input('\nIngrese una regla: '))
+        reglas.append(r)
+        opcion = input('¿Desea ingresar otra regla? (s/n): ')
+
+def ver_reglas():
+    '''Muestra las reglas cargadas hasta el momento.
+
+    '''
+
+    print('\nReglas:\n')
+    resultado = ''
+
+    if len(reglas) == 0:
+        resultado = 'No hay reglas cargadas.'
+    else:
+        for r in reglas:
+            resultado += r.regla + '\n'
+    
+    print(resultado + '\n')
+
+def borrar_reglas():
+    '''Borra las reglas almacenadas, si las hay.
+
+    '''
+
+    if len(reglas) == 0:
+        input('\nNo hay registros cargados. Pulse cualquier tecla.\n\n')
+    else:
+        opcion = input('\n¿Desea borrar las reglas? (s/n): ')
+
+        if opcion == 's':
+            reglas.clear()
+            print('Reglas borradas.')
+    
+    print('\n')
+
+def aplicacion():
+    '''Inicia la aplicación.
+
+    '''
+
+    opcion = ''
+
+    while opcion != '5':
+        opcion = input('+' + ('-' * 26) + '+\n' +
+        '+ {0:25s}+\n'.format('Elija una opción:') +
+        '+ {0:25s}+\n'.format('1 - Cargar reglas') +
+        '+ {0:25s}+\n'.format('2 - Ver reglas') +
+        '+ {0:25s}+\n'.format('3 - Borrar reglas') +
+        '+ {0:25s}+\n'.format('4 - Analizar gramática') +
+        '+ {0:25s}+\n'.format('5 - Salir') +
+        '+' + ('-' * 26) + '+\n\n' +
+        '>>>')
+
+        if opcion == '1':
+            cargar_reglas()
+        elif opcion == '2':
+            ver_reglas()
+        elif opcion == '3':
+            borrar_reglas()
+        elif opcion == '4':
+            pass # Analizar gramática.
+        elif opcion == '5':
+            pass
+        else:
+            print('\nError: elija una opción dentro del rango permitido.\n\n')
+
+aplicacion()
