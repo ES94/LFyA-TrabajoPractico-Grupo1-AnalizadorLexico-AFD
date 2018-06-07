@@ -94,7 +94,54 @@ class Regla:
     def __init__(self, regla):
         self.regla = regla
 
-def setear_gramatica(cadena):
+def buscar_terminal(no_terminal, regla_a_excluir):
+    for r in reglas:
+        if r.regla != reglas[regla_a_excluir].regla:
+            if no_terminal == r.regla[0]:
+                if str.isupper(r.regla[3]):
+                    buscar_terminal(r.regla[3], regla_a_excluir)
+                else:
+                    return r.regla[3]
+
+def calcular_firsts(indice_regla):
+    firsts = []
+    terminal = ''
+
+    if str.isupper(reglas[indice_regla].regla[3]):
+        for r in reglas:
+            if r.regla[0] == reglas[indice_regla].regla[3]:
+                terminal = buscar_terminal(reglas[indice_regla].regla[3], 
+                reglas.index(reglas[indice_regla]))
+
+        if terminal not in firsts:
+            firsts.append(terminal)
+
+    else:
+        terminal = reglas[indice_regla].regla[3]
+            
+        if terminal not in firsts:
+            firsts.append(terminal)
+
+    return firsts
+
+def calcular_follows():
+    follows = []
+
+    for r in reglas:
+        antecedente = r.regla[0]
+        
+        for re in reglas:
+            s = re.regla[3:len(re.regla)]
+
+            if antecedente in s:
+                pass
+
+            for i in range(3, len(r.regla - 1)):
+                pass
+
+    return follows
+
+def setear_gramatica(reglas):
     '''Recibe una gramática, pasada como parámetro, y devuelve los firsts, 
     follows y selects de la gramática, y si ésta es LL1.
 
@@ -133,7 +180,7 @@ def evaluar_cadena(cadena):
             l = tabla[(s, look)]    # Se copia el resto de la entrada en lista.
             l = l[::-1]             # Se invierte la lista con la copia.
             pila.extend(l)          # Se añade la lista invertida a la pila.
-        elif s == look:             # Si es un no terminal y es igual al look:
+        elif s == look:             # Si es un terminal y es igual al look:
             look = lexer.token()    # Se hace un lookahead.
         else:                       # Sino:
             print('Error')          # Imprime error.
