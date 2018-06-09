@@ -136,13 +136,16 @@ def buscar_terminal(NT,reglaTemp): #Si voy a buscar terminales a traves de otros
 def calcular_firsts(indice_regla): #llamar funcion dentro de un ciclo iterando por cada regla de reglas.
     terminal = ''
     Regla_Temporal = reglas[indice_regla].regla
-    buscar_terminal(reglas[indice_regla].regla[0],Regla_Temporal)
+    print (Regla_Temporal)
 
     if str.isupper(reglas[indice_regla].regla[2]): # Si el primer consecuente es un NT, busco los firsts de sus reglas.
         no_terminal = reglas[indice_regla].regla[2]
         buscar_terminal(no_terminal,Regla_Temporal)
     else: #Sino, significa que ya tenemos el first de la regla.
-        terminal = reglas[indice_regla].regla[2]           
+        terminal = reglas[indice_regla].regla[2]
+        Terminal_lambda = terminal_es_lambda(reglas[indice_regla].regla)
+        if Terminal_lambda == True: #Si el terminal es lambda
+            terminal = 'lambda'
         if terminal not in firsts:
             firsts.append(terminal)
 
