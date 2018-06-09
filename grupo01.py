@@ -13,7 +13,10 @@
 
 from ply import cpp, ctokens, lex, yacc, ygen
 
+firsts = []
 reglas = []
+Regla_Temporal = []
+U = 2 #Ubicacion en regla original. Se usa para moverme a lo largo de esta regla original.
 
 class ResultadoGramatica:
     '''Representa el resultado del análisis de una gramática, junto con las 
@@ -94,31 +97,52 @@ class Regla:
     def __init__(self, regla):
         self.regla = regla
 
-def buscar_terminal(no_terminal, regla_a_excluir):
-    for r in reglas:
-        if r.regla != reglas[regla_a_excluir].regla:
-            if no_terminal == r.regla[0]:
-                if str.isupper(r.regla[3]):
-                    buscar_terminal(r.regla[3], regla_a_excluir)
-                else:
-                    return r.regla[3]
-
-def calcular_firsts(indice_regla):
-    firsts = []
-    terminal = ''
-
-    if str.isupper(reglas[indice_regla].regla[3]):
-        for r in reglas:
-            if r.regla[0] == reglas[indice_regla].regla[3]:
-                terminal = buscar_terminal(reglas[indice_regla].regla[3], 
-                reglas.index(reglas[indice_regla]))
-
-        if terminal not in firsts:
-            firsts.append(terminal)
-
+def terminal_es_lambda(regla):
+    if regla[2] == 'l' and regla[3] == 'a' and regla[4] == 'm' and regla[5] == 'b' and regla[6] == 'd' and regla[7] == 'a':
+        return True
     else:
-        terminal = reglas[indice_regla].regla[3]
-            
+        return False
+        
+def buscar_terminal(NT,reglaTemp): #Si voy a buscar terminales a traves de otros NT, significa que puedo encontrarme más de un terminal, hago una Lista Aux de firsts.
+    for r in reglas:
+        Terminal_lambda = False
+        if NT == r.regla[0]: #Encontre el NT como antecedente de una regla
+            print (NT, r.regla[2])
+            if str.isupper(r.regla[2]):
+                buscar_terminal(r.regla[2],reglaTemp)
+            else:
+                terminal = r.regla[2]
+                Terminal_lambda = terminal_es_lambda(r.regla)
+                if Terminal_lambda == True: #Si el terminal es lambda
+                    global U #Hago uso de la variable GLOBAL U
+                    if len(reglaTemp) - 1 > U:       #Si el NT NO es el ultimo de la cadena
+                        print (U)
+                        U = U + 1                      
+                        if str.isupper(reglaTemp[U]):                                
+                            buscar_terminal(reglaTemp[U],reglaTemp)   #vuelvo a buscar terminales
+                        else:
+                            terminal = reglaTemp[U]
+                            if terminal not in firsts:
+                                firsts.append(terminal)
+                    else: #Si no hay mas nada, agrego lambda a los firsts.
+                        terminal = 'lambda'
+                        if terminal not in firsts:
+                            firsts.append(terminal)
+                else: #Si el terminal no es lambda
+                    if terminal not in firsts:
+                        firsts.append(terminal)
+
+                
+def calcular_firsts(indice_regla): #llamar funcion dentro de un ciclo iterando por cada regla de reglas.
+    terminal = ''
+    Regla_Temporal = reglas[indice_regla].regla
+    buscar_terminal(reglas[indice_regla].regla[0],Regla_Temporal)
+
+    if str.isupper(reglas[indice_regla].regla[2]): # Si el primer consecuente es un NT, busco los firsts de sus reglas.
+        no_terminal = reglas[indice_regla].regla[2]
+        buscar_terminal(no_terminal,Regla_Temporal)
+    else: #Sino, significa que ya tenemos el first de la regla.
+        terminal = reglas[indice_regla].regla[2]           
         if terminal not in firsts:
             firsts.append(terminal)
 
