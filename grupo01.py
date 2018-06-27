@@ -1,85 +1,9 @@
-# -*- coding: utf-8 -*-
-
-#------------------------------------------------------------------------------
-# Se utiliza la siguiente notación:
-# - UpperCamelCase para nombres de Clases.
-# - snake_case en minúsculas para nombres de funciones y variables.
-# - SNAKE_CASE en mayúsculas para nombres de constantes.
-# - Nombrar a las clases con nombres propios, y a las funciones con verbos de 
-# las acciones que realizan.
-# - Cada línea de código no debe superar las 80 columnas de ancho. Debe
-# realizarse un salto de línea.
-#------------------------------------------------------------------------------
-
-from ply import cpp, ctokens, lex, yacc, ygen
-
 firsts = []
-reglas = []
+follows = []
 Regla_Temporal = []
+Agregar_Follow = False #Banderas que se activan para saber si estoy trabajando con la lista de follows o de firsts.
+Agregar_First = False
 U = 2 #Ubicacion en regla original. Se usa para moverme a lo largo de esta regla original.
-
-class ResultadoGramatica:
-    '''Representa el resultado del análisis de una gramática, junto con las 
-    reglas que la definen y los firsts, follows, y selects de cada una de 
-    ellas.
-
-    '''
-
-    def __init__(self, reglas, es_ll1):
-        self.reglas = reglas
-        self.es_ll1 = es_ll1
-    
-    def __repr__(self):
-        salida = (
-        ('+' + ('-' * 15)) * 4 + '+\n' +
-        '+{0:15s}+{1:15s}+{2:15s}+{3:15s}+\n'.format('Regla', 'Firsts', 
-        'Follows', 'Selects') +
-        ('+' + ('-' * 15)) * 4 + '+\n')
-        
-        for r in self.reglas:
-            hay_caracteres = True
-            salida += '+{0:15s}'.format(r.regla)
-
-            while hay_caracteres:
-                hay_caracteres = False
-                s = ''
-
-                while r.firsts:
-                    if len(s) < 15:
-                        s += r.firsts.pop()
-                    else:
-                        hay_caracteres = True
-
-                salida += '+{0:15s}'.format(s)
-                s = ''
-
-                while r.follows:
-                    if len(s) < 15:
-                        s += r.follows.pop()
-                    else:
-                        hay_caracteres = True
-
-                salida += '+{0:15s}'.format(s)
-                s = ''
-
-                while r.selects:
-                    if len(s) < 15:
-                        s += r.selects.pop()
-                    else:
-                        hay_caracteres = True
-
-                salida += '+{0:15s}+\n'.format(s)
-                s = ''
-
-                if hay_caracteres:
-                    salida += '+{0:15s}'.format(' ')
-                else:
-                    salida += ('+' + ('-' * 15)) * 4 + '+\n'
-
-        salida += '\nEsta gramática {0}es LL1.'.format(('no ','')[self.es_ll1])
-
-        return salida
-
 class Regla:
     '''Representa una regla, junto con sus firsts, follows y selects.\n
     Atributos:
@@ -90,12 +14,13 @@ class Regla:
 
     '''
 
-    firsts = []
-    follows =[]
-    selects = []
-
-    def __init__(self, regla):
+    def __init__(self, regla, firsts, follows, selects):
         self.regla = regla
+        self.firsts = firsts
+        self.follows = follows
+        self.selects = selects
+
+
 
 def terminal_es_lambda(regla):
     if regla[2] == 'l' and regla[3] == 'a' and regla[4] == 'm' and regla[5] == 'b' and regla[6] == 'd' and regla[7] == 'a':
@@ -103,11 +28,11 @@ def terminal_es_lambda(regla):
     else:
         return False
         
+
 def buscar_terminal(NT,reglaTemp): #Si voy a buscar terminales a traves de otros NT, significa que puedo encontrarme más de un terminal, hago una Lista Aux de firsts.
     for r in reglas:
         Terminal_lambda = False
         if NT == r.regla[0]: #Encontre el NT como antecedente de una regla
-            print (NT, r.regla[2])
             if str.isupper(r.regla[2]):
                 buscar_terminal(r.regla[2],reglaTemp)
             else:
@@ -116,27 +41,41 @@ def buscar_terminal(NT,reglaTemp): #Si voy a buscar terminales a traves de otros
                 if Terminal_lambda == True: #Si el terminal es lambda
                     global U #Hago uso de la variable GLOBAL U
                     if len(reglaTemp) - 1 > U:       #Si el NT NO es el ultimo de la cadena
-                        print (U)
                         U = U + 1                      
                         if str.isupper(reglaTemp[U]):                                
                             buscar_terminal(reglaTemp[U],reglaTemp)   #vuelvo a buscar terminales
                         else:
                             terminal = reglaTemp[U]
+                            if Agregar_First == True:
+                                if terminal not in firsts:
+                                    firsts.append(terminal)
+                            else:
+                                if Agregar_Follow == True:
+                                    if terminal not in follows:
+                                        follows.append(terminal)
+                    else: #Si no hay mas nada, agrego lambda a los firsts (en FIRST) || busco follows del antecedente(en FOLLOW)
+                        terminal = 'lambda'
+                        if Agregar_First == True:
                             if terminal not in firsts:
                                 firsts.append(terminal)
-                    else: #Si no hay mas nada, agrego lambda a los firsts.
-                        terminal = 'lambda'
+                        else:
+                            if Agregar_Follow == True:
+                                buscar_follows_antecedente(reglaTemp)
+                else: #Si el terminal no es lambda
+                    if Agregar_First == True:
                         if terminal not in firsts:
                             firsts.append(terminal)
-                else: #Si el terminal no es lambda
-                    if terminal not in firsts:
-                        firsts.append(terminal)
+                    else:
+                        if Agregar_Follow == True:
+                            if terminal not in follows:
+                                follows.append(terminal)
 
                 
 def calcular_firsts(indice_regla): #llamar funcion dentro de un ciclo iterando por cada regla de reglas.
+    global Agregar_First
+    Agregar_First = True
     terminal = ''
     Regla_Temporal = reglas[indice_regla].regla
-    print (Regla_Temporal)
 
     if str.isupper(reglas[indice_regla].regla[2]): # Si el primer consecuente es un NT, busco los firsts de sus reglas.
         no_terminal = reglas[indice_regla].regla[2]
@@ -149,35 +88,100 @@ def calcular_firsts(indice_regla): #llamar funcion dentro de un ciclo iterando p
         if terminal not in firsts:
             firsts.append(terminal)
 
+    Agregar_First = False
     return firsts
 
-def calcular_follows():
-    follows = []
-
+def buscar_follows_antecedente(reglaTemp):  #Se debe recorrer las listas de follows de cada NT.
     for r in reglas:
-        antecedente = r.regla[0]
+        if r.regla == reglaTemp:
+            for f in range(0,len(r.follows)):
+                if r.follows[f] not in follows:
+                    follows.append(r.follows[f])
+            break
+
         
-        for re in reglas:
-            s = re.regla[3:len(re.regla)]
+def es_distinguido(NT):
+    for r in reglas:
+        if r.regla[0] == NT:
+            return True
+        else:
+            return False
+        break 
+   
+def buscar_follows(NT):
+    for r in reglas: #Se usa para recorrer todas las reglas
+        for n in range(2,len(r.regla)): #Se usa para recorrer cada caracter de cada una de esas reglas
+            if NT == r.regla[n]: #Encontre el NT como consecuente en alguna regla
+                reglaTemp = r.regla
+                if len(reglaTemp) - 1 > n:       #Si el NT NO es el ultimo de la cadena
+                    if str.isupper(reglaTemp[n+1]):
+                        global U
+                        U = n
+                        buscar_terminal(reglaTemp[n+1],reglaTemp)   #vuelvo a buscar terminales
+                    else:
+                        terminal = reglaTemp[n+1]
+                        if terminal not in follows:
+                            follows.append(terminal)
+                else: #Si no hay mas nada, busco los follows del antecedente de esa regla.
+                    buscar_follows_antecedente(reglaTemp)    
+       
+def calcular_follows(no_terminal):
+    global Agregar_Follow
+    Agregar_Follow = True
+    reglaTemp = []
+    if es_distinguido(no_terminal) == True:
+        follows.append('$')
+    terminal = ''
+    buscar_follows(no_terminal)
 
-            if antecedente in s:
-                pass
-
-            for i in range(3, len(r.regla - 1)):
-                pass
-
+    Agregar_Follow = False
     return follows
 
-def setear_gramatica(reglas):
+def calcular_selects():
+    for r in reglas:
+        if 'lambda' in r.firsts:
+            aux = r.firsts
+            aux.remove('lambda')
+            r.selects = aux
+
+            for f in r.follows:
+                if f not in r.selects:
+                    r.selects.append(f)
+        else:
+            r.selects = r.firsts
+        print(r.selects)            
+            
+
+def calcular_LL1():
+    antecedente = ''
+    es_ll1 = True
+    lista_selects = []
+
+    for r in reglas:
+        if r.regla[0] != antecedente:
+            antecedente = r.regla[0]
+            lista_selects.clear()
+        
+        for s in r.selects:
+            if s in lista_selects:
+                es_ll1 = False
+
+                break
+            else:
+                lista_selects.append(s)
+
+        if not es_ll1:
+            break
+    
+    return es_ll1
+
+def setear_gramatica(gramatica):
     '''Recibe una gramática, pasada como parámetro, y devuelve los firsts, 
     follows y selects de la gramática, y si ésta es LL1.
 
     '''
-    
-    resultado = ResultadoGramatica(reglas, True)
-    # {...}
 
-    return resultado
+    # {...}
 
 def evaluar_cadena(cadena):
     '''Evalua una cadena, pasada como parámetro, y determina si pertenece o no 
@@ -185,113 +189,37 @@ def evaluar_cadena(cadena):
 
     '''
 
-    pila = ['', '']
-    lexer = lex.lex()
-    lexer.input(cadena)
-    look = lexer.token()
-    NT = []
-    tabla = [[0, 0], 
-             [0, 0]]
+    # {...}
 
-    #--------------------------------------------------------------------------
-    # Cómo hacer lookahead:
-    # lexer = lex.lex()             # Se crea el lexer (analizador léxico).
-    # lexer.input(cadena)           # Se ingresa la cadena y se la tokeniza.
-    # lexer.token()                 # Se realiza un lookahead.
-    #--------------------------------------------------------------------------
-
-    while pila:                     # Mientras la pila no esté vacía:
-        s = pila.pop()              # Extrae el primer elemento de la pila.
-        
-        if s in NT:                 # Si el elemento es un no terminal:
-            l = tabla[(s, look)]    # Se copia el resto de la entrada en lista.
-            l = l[::-1]             # Se invierte la lista con la copia.
-            pila.extend(l)          # Se añade la lista invertida a la pila.
-        elif s == look:             # Si es un terminal y es igual al look:
-            look = lexer.token()    # Se hace un lookahead.
-        else:                       # Sino:
-            print('Error')          # Imprime error.
     
-    if look == '$':                 # Si al final el lookahead devuelve un '$':
-        print('True')               # Imprime 'True'. La cadena es válida.
-    else:                           # Sino:
-        print('False')              # Imprime 'False'. La cadena no es válida.
+r1 = Regla('E:[E]', [], [], [])
+r2 = Regla('E:nF', [], [], [])
+r3 = Regla('F:,n', [], [], [])
+r4 = Regla('F:lambda', [], [], [])
 
-def cargar_reglas():
-    '''Carga las reglas que el usuario define.
+#NO OLVIDARSE DE AGREGAR LAS REGLAS QUE SE AGREGAN ARRIBA, ACA ABAJO!!
 
-    '''
-
-    r = Regla(input('\nIngrese una regla: '))
-    reglas.append(r)
-    opcion = input('¿Desea ingresar otra regla? (s/n): ')
-
-    while opcion == 's':
-        r = Regla(input('\nIngrese una regla: '))
-        reglas.append(r)
-        opcion = input('¿Desea ingresar otra regla? (s/n): ')
-
-def ver_reglas():
-    '''Muestra las reglas cargadas hasta el momento.
-
-    '''
-
-    print('\nReglas:\n')
-    resultado = ''
-
-    if len(reglas) == 0:
-        resultado = 'No hay reglas cargadas.'
-    else:
-        for r in reglas:
-            resultado += r.regla + '\n'
-    
-    print(resultado + '\n')
-
-def borrar_reglas():
-    '''Borra las reglas almacenadas, si las hay.
-
-    '''
-
-    if len(reglas) == 0:
-        input('\nNo hay registros cargados. Pulse cualquier tecla.\n\n')
-    else:
-        opcion = input('\n¿Desea borrar las reglas? (s/n): ')
-
-        if opcion == 's':
-            reglas.clear()
-            print('Reglas borradas.')
-    
-    print('\n')
-
-def aplicacion():
-    '''Inicia la aplicación.
-
-    '''
-
-    opcion = ''
-
-    while opcion != '5':
-        opcion = input('+' + ('-' * 26) + '+\n' +
-        '+ {0:25s}+\n'.format('Elija una opción:') +
-        '+ {0:25s}+\n'.format('1 - Cargar reglas') +
-        '+ {0:25s}+\n'.format('2 - Ver reglas') +
-        '+ {0:25s}+\n'.format('3 - Borrar reglas') +
-        '+ {0:25s}+\n'.format('4 - Analizar gramática') +
-        '+ {0:25s}+\n'.format('5 - Salir') +
-        '+' + ('-' * 26) + '+\n\n' +
-        '>>>')
-
-        if opcion == '1':
-            cargar_reglas()
-        elif opcion == '2':
-            ver_reglas()
-        elif opcion == '3':
-            borrar_reglas()
-        elif opcion == '4':
-            pass # Analizar gramática.
-        elif opcion == '5':
-            pass
-        else:
-            print('\nError: elija una opción dentro del rango permitido.\n\n')
-
-aplicacion()
+reglas = [r1, r2, r3, r4]  #La lista reglas tiene 4 posiciones (regla, firsts, follows y select) por cada posicion
+print (' ')
+print ('-------------- F I R S T S ---------------')
+print (' ')
+for r in range(0,len(reglas)):
+    print(reglas[r].regla,'     ', calcular_firsts(r))
+    reglas[r].firsts = firsts
+    firsts = []
+print (' ')
+print ('-------------- F O L L O W S ---------------')
+print (' ')
+for r in range(0,len(reglas)):
+    print(reglas[r].regla,'    ', calcular_follows(reglas[r].regla[0]))
+    reglas[r].follows = follows
+    follows = []
+print (' ')
+print ('-------------- S E L E C T ---------------')
+print (' ')
+calcular_selects()
+print (' ')
+if calcular_LL1():
+    print ('ES LL 1')
+else:
+    print ('NO ES LL 1')
